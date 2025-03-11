@@ -5,35 +5,93 @@
 
 โปรเจคนี้มีเป้าหมายในการสร้างโมเดล Machine Learning เพื่อทำนายความน่าจะเป็นที่อุปกรณ์จะล้มเหลว โดยให้ความสำคัญกับการลด False Positives และ False Negatives 
 
-## 📂 ข้อมูลชุดข้อมูล
+## 📂 Dataset
 - **แหล่งที่มา**: ข้อมูลที่รวบรวมจากเซ็นเซอร์ของอุปกรณ์
 - **เป้าหมาย**: ทำนายค่าคอลัมน์ `failure` (0 = ไม่ล้มเหลว, 1 = ล้มเหลว)
-- **ลักษณะข้อมูล**: ประกอบด้วยค่าต่าง ๆ จากเซ็นเซอร์ที่สามารถนำไปใช้พยากรณ์การล้มเหลวได้
+- **ข้อมูลที่มี**:
+  | Column Name | Description |
+  |------------|-------------|
+  | `date`     | Date of record |
+  | `device`   | Device identifier |
+  | `failure`  | Failure occurrence (e.g., 0 = No failure, 1 = Failure) |
+  | `metric1` - `metric9` | Various performance metrics |
 
 ## 📊 กระบวนการพัฒนาโมเดล
-1. **การทำความสะอาดข้อมูล**: ตรวจสอบค่าสูญหาย และปรับปรุงคุณภาพข้อมูล
-2. **การวิเคราะห์ข้อมูลเบื้องต้น (EDA)**: วิเคราะห์ข้อมูลผ่านการสร้างกราฟ เช่น Histogram, Heatmap
-3. **การเลือกและวิศวกรรมฟีเจอร์**: เลือกฟีเจอร์ที่สำคัญต่อการพยากรณ์ และใช้เทคนิค Feature Engineering
-4. **การสร้างโมเดล Machine Learning**: ใช้อัลกอริธึมที่เหมาะสม เช่น Logistic Regression, Random Forest, XGBoost
-5. **การประเมินผลลัพธ์**: ใช้เมตริก เช่น Confusion Matrix, Precision, Recall, ROC Curve
+1. **Data Cleaning**: ตรวจสอบค่าสูญหาย และปรับปรุงคุณภาพข้อมูล
+2. **Exploratory Data Analysis (EDA)**: วิเคราะห์ข้อมูลผ่านการสร้างกราฟ เช่น Histogram, Heatmap
+3. **Feature Selection & Engineering:**: เลือกฟีเจอร์ที่สำคัญต่อการพยากรณ์ และใช้เทคนิค Feature Engineering
+4. **Machine Learning Model Development**: ใช้อัลกอริธึมที่เหมาะสม เช่น Logistic Regression, Random Forest
+5. **Model Evaluation**: ใช้เมตริก เช่น Confusion Matrix, Precision, Recall, ROC Curve
 
 ## 📊 ตัวอย่างการแสดงผลข้อมูล
-### Distribution ของค่า Failure
-![Failure Distribution](path/to/failure_distribution.png)
+### Active Devices per Month
+![Failure Distribution](https://raw.githubusercontent.com/Pariman1419/Predictive-Maintenance/main/Active Devices per Month.png)
 
-### ROC Curve ของโมเดลที่ใช้
-![ROC Curve](path/to/roc_curve.png)
+### Heat map 
+![Failure Distribution](https://raw.githubusercontent.com/Pariman1419/Predictive-Maintenance/main/Heatmap.png)
+
+
+### Distribution of Failure
+![Failure Distribution](https://raw.githubusercontent.com/Pariman1419/Predictive-Maintenance/main/FailureDistribution.png)
+
+- ข้อมูลเป็นข้อมูลแบบ Imbalance จึงจำเป็นต้องทำการ SMOTE ก่อนทำการ Train model
 
 ## 🛠️ ตัวอย่างโค้ดใช้งานโมเดล
 ```python
-from model import predict
-input_data = { "sensor_1": 0.5, "sensor_2": 1.2, "sensor_3": 3.4 }
-result = predict(input_data)
-print(f"Prediction: {result}")
+
+from imblearn.over_sampling import SMOTE
+from collections import Counter
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+
+# แยก Features และ Target
+X = df_model.drop(columns=['failure'])
+y = df_model['failure']
+
+# ใช้ SMOTE เพื่อเพิ่มตัวอย่างของ class ที่มีจำนวนน้อย
+smote = SMOTE(sampling_strategy='minority', random_state=42)
+X_resampled, y_resampled = smote.fit_resample(X, y)
+
+
+# แบ่งชุดข้อมูล (X คือ Features, y คือ Target)
+X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, 
+                                                    test_size=0.2, shuffle=True, 
+                                                    random_state=42)
+
+# ใช้โมเดลที่ดีที่สุดจาก Grid Search
+best_logreg = grid_search_logreg.best_estimator_
+best_tree = grid_search_tree.best_estimator_
+best_rf = grid_search_rf.best_estimator_
+
+# ทำนายผล
+y_pred_logreg = best_logreg.predict(X_test)
+y_pred_tree = best_tree.predict(X_test)
+y_pred_rf = best_rf.predict(X_test)
+
+# แสดงผลลัพธ์
+print("Logistic Regression:\n", classification_report(y_test, y_pred_logreg))
+print("Decision Tree:\n", classification_report(y_test, y_pred_tree))
+print("Random Forest:\n", classification_report(y_test, y_pred_rf))
+
+```
+### ROC Curve 
+
+![Failure Distribution](https://raw.githubusercontent.com/Pariman1419/Predictive-Maintenance/main/ROC.png)
+
+# Performance Metrics
+
+### Logistic Regression
+```
+Precision: 0.71 | Recall: 0.87 | F1-score: 0.78 | Accuracy: 0.76
 ```
 
-## ✨ คอนแทค
-หากมีคำถามหรือข้อเสนอแนะ สามารถติดต่อผ่าน [GitHub Issues](https://github.com/your-repo/issues) หรืออีเมลของทีมพัฒนาได้
+### Decision Tree
+```
+Precision: 1.00 | Recall: 1.00 | F1-score: 1.00 | Accuracy: 1.00
+```
 
----
-✨ โปรเจคนี้เป็นการประยุกต์ใช้ Machine Learning สำหรับ Predictive Maintenance หวังว่าข้อมูลนี้จะเป็นประโยชน์! 🚀
+### Random Forest
+```
+Precision: 1.00 | Recall: 1.00 | F1-score: 1.00 | Accuracy: 1.00
+```
+
